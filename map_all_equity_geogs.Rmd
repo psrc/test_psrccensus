@@ -1,0 +1,43 @@
+---
+title: "Map Equity Geographies"
+author: "suzanne"
+date: "10/5/2021"
+output: html_document
+---
+We can quite easily map all our equity geographies by putting together get_equity_geographies, Elmer equity table valued functions, and create_tract_map
+
+```{r mapit, results='asis', fig.show='asis'}
+library(sf)
+library(dplyr)
+library(psrccensus)
+library(tidycensus)
+library(DBI)
+library(odbc)
+library(knitr)
+
+# Geodatabase info
+gdb.nm <- paste0("MSSQL:server=",
+                 "AWS-PROD-SQL\\Sockeye",
+                 ";database=",
+                 "ElmerGeo",
+                 ";trusted_connection=yes")
+
+spn <-  2285
+
+tract_layer_name <- "dbo.tract2010_nowater"
+
+tract.lyr <- st_read(gdb.nm, tract_layer_name, crs = spn)
+
+#Elmer info
+elmer_connection <- dbConnect(odbc::odbc(),
+                              driver = "SQL Server",
+                              server = "AWS-PROD-SQL\\Sockeye",
+                              database = "Elmer",
+                              trusted_connection = "yes")
+
+
+create_tract_map(tract.tbl=get_equity_geographies(elmer_connection,'equity_geog_vs_reg_total', 'disability_equity_geographies','2018'), tract.lyr=tract.lyr)
+
+
+```
+
