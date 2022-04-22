@@ -52,17 +52,19 @@ race_county_formatted<-race_county %>%
 race_county_formatted
 ```
 
-## Including Plots
+## ACS example
 
 •	ACS: Units in structure by tenure, by city by county (so cross-county city values are split across counties)
 
 
 
 ```{r find_var, echo=FALSE}
-library(tidycensus)
-
-acs_var_list<- load_variables(2020, "acs5", cache = TRUE)
-
+tenure_units<-get_acs_recs(geography = 'place',
+             table.names = c('B25032'),
+             years=c(2020),
+             counties = c("King", "Kitsap", "Pierce", "Snohomish"),
+             acs.type = 'acs5')
+write.table(tenure_units, "clipboard", sep="\t", row.names=FALSE)
 ```
 •	PUMS: Household income by race and Hispanic/Latinx and POC (householder), 4 counties + region
 Median Income
