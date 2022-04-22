@@ -1,0 +1,98 @@
+---
+title: "Examples using the psrccensus library"
+author: "suzanne"
+date: "4/20/2022"
+output: html_document
+---
+## Examples using psrccensus
+
+The data science team asked for examples of summaries they would like to do with the psrccensus library.
+The documentation is here: https://psrc.github.io/psrccensus/
+
+•	Decennial Census: Total population by race and Hispanic/Latinx origin, 4 counties + region
+o	Non-Hispanic/Latinx
+	White only
+	Black only
+	…
+o	Hispanic/Latinx
+	White only
+	Black only
+	…
+o	Also, people of color (POC)
+
+There are a few things that are nice about scripting this. It's really easy to replicate. It automatically pulls the 4-counties and aggregates to the region.
+
+## Population by Race/Ethnicity by County from Census
+```{r get_census}
+library(psrccensus)
+
+race_county<-get_decennial_recs(geography='county', 
+                   table_codes= c('P005'),
+                   years= c(2010)              
+                   )
+race_county
+
+write.table(race_county, "clipboard", sep="\t", row.names=FALSE)
+```
+I recommend doing the formatting in Excel, but if you want to learn how in R, here's how. This is kind of more of an intermediate thing, so I wouldn't worry too much about it.
+```{r format_census}
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(sjmisc)
+
+race_county_formatted<-race_county %>%
+   mutate(County = str_replace_all(NAME, pattern = " County, Washington", replacement = "")) %>%
+   mutate(Race_Ethnicity = str_replace_all(label, pattern = "Total!!", replacement = ""))%>%    
+   mutate(Race_Ethnicity = str_replace_all(Race_Ethnicity, pattern = "!!", replacement = " ")) %>%
+   select(County, Race_Ethnicity, value)%>%pivot_wider(names_from=Race_Ethnicity, values_from=value)%>%
+   mutate(People_of_Color=Total-`Not Hispanic or Latino White alone`)%>%
+  rotate_df(cn=TRUE)
+race_county_formatted
+```
+
+## Including Plots
+
+•	ACS: Units in structure by tenure, by city by county (so cross-county city values are split across counties)
+
+
+
+```{r find_var, echo=FALSE}
+library(tidycensus)
+
+acs_var_list<- load_variables(2020, "acs5", cache = TRUE)
+
+```
+•	PUMS: Household income by race and Hispanic/Latinx and POC (householder), 4 counties + region
+Median Income
+o	White only, non-Hispanic/Latinx
+o	Black only, non-Hispanic/Latinx
+o	…
+o	Hispanic/Latinx
+o	POC
+```{r pums_example}
+
+library(psrccensus)
+library(magrittr)
+library(dplyr)
+library(srvyr)
+
+# Obtain the data
+pums19_5yr <- get_psrc_pums(5, 2019, "h", c("COUNTY","HINCP","PRACE"))
+
+# Create a POC/Non-POC variable 
+pums19_5yr %<>% mutate(POCYN=factor(case_when(PRACE=="White alone" ~"Non-POC",
+                                              !is.na(PRACE) ~"POC"),
+                                    levels=c("POC","Non-POC")))
+
+# Summarize; in this case by region first and append to county-level to get all totals
+# -- (Otherwise would just get a single region total)
+hhinc_race_rgn <- psrc_pums_median(pums19_5yr, "HINCP","PRACE")
+hhinc_race     <- psrc_pums_median(pums19_5yr, "HINCP",c("COUNTY","PRACE")) %>%
+                    .[COUNTY!="Region"] %>% rbind(hhinc_race_rgn)
+hhinc_poc_rgn  <- psrc_pums_median(pums19_5yr, "HINCP","POCYN")
+hhinc_poc      <- psrc_pums_median(pums19_5yr, "HINCP",c("COUNTY","POCYN")) %>%
+                    .[COUNTY!="Region"] %>% rbind(hhinc_poc_rgn)
+
+```
