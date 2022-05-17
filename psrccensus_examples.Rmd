@@ -87,7 +87,7 @@ pums19_5yr <- get_psrc_pums(5, 2019, "h", c("COUNTY","HINCP","PRACE","GRPIP"))
 pums19_5yr %<>% mutate(POCYN=factor(case_when(PRACE=="White alone" ~"Non-POC",
                                               !is.na(PRACE) ~"POC"),
                                     levels=c("POC","Non-POC")),
-                       RENT_BURDEN=factor(case_when(GRPIP <=30 ~"Less than 30 percent",
+                       RENT_BURDEN=factor(case_when(GRPIP < 30 ~"Less than 30 percent",
                                                     dplyr::between(GRPIP,30,50) ~ "Between 30 and 50 percent",
                                                     GRPIP > 50 ~ "Greater than 50 percent",
                                                     !is.na(GRPIP) ~"Else"),
