@@ -81,20 +81,32 @@ library(dplyr)
 library(srvyr)
 
 # Obtain the data
-pums19_5yr <- get_psrc_pums(5, 2019, "h", c("COUNTY","HINCP","PRACE"))
+pums19_5yr <- get_psrc_pums(5, 2019, "h", c("COUNTY","HINCP","PRACE","GRPIP"))
 
-# Create a POC/Non-POC variable 
+# Create a POC/Non-POC variable & rent-burden variable
 pums19_5yr %<>% mutate(POCYN=factor(case_when(PRACE=="White alone" ~"Non-POC",
                                               !is.na(PRACE) ~"POC"),
-                                    levels=c("POC","Non-POC")))
+                                    levels=c("POC","Non-POC")),
+                       RENT_BURDEN=factor(case_when(GRPIP <=30 ~"Less than 30 percent",
+                                                    dplyr::between(GRPIP,30,50) ~ "Between 30 and 50 percent",
+                                                    GRPIP > 50 ~ "Greater than 50 percent",
+                                                    !is.na(GRPIP) ~"Else"),
+                                          levels=c("Greater than 50 percent",
+                                                   "Between 30 and 50 percent",
+                                                   "Less than 30 percent","Else")))
 
 # Summarize; in this case by region first and append to county-level to get all totals
 # -- (Otherwise would just get a single region total)
 hhinc_race_rgn <- psrc_pums_median(pums19_5yr, "HINCP","PRACE")
 hhinc_race     <- psrc_pums_median(pums19_5yr, "HINCP",c("COUNTY","PRACE")) %>%
                     .[COUNTY!="Region"] %>% rbind(hhinc_race_rgn)
+
 hhinc_poc_rgn  <- psrc_pums_median(pums19_5yr, "HINCP","POCYN")
 hhinc_poc      <- psrc_pums_median(pums19_5yr, "HINCP",c("COUNTY","POCYN")) %>%
                     .[COUNTY!="Region"] %>% rbind(hhinc_poc_rgn)
+
+rb_race_rgn  <- psrc_pums_count(pums19_5yr, group_vars=c("RENT_BURDEN","PRACE"))
+rb_race      <- psrc_pums_count(pums19_5yr, group_vars=c("COUNTY","RENT_BURDEN","PRACE")) %>%
+                    .[COUNTY!="Region"] %>% rbind(rb_race_rgn )
 
 ```
